@@ -1,0 +1,1 @@
+- go mod init github.com/<github-username>/<package-name>
