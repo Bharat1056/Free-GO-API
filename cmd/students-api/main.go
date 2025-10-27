@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Bharat1056/students-api/internal/config"
+	student "github.com/Bharat1056/students-api/internal/http/handler/students"
 )
 
 func main() {
@@ -20,15 +20,7 @@ func main() {
 	// database setup
 	// setup router
 	router := http.NewServeMux()
-	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("env:", cfg.Env)
-		fmt.Println("storage path:", cfg.StoragePath)
-		fmt.Println("storage path:", cfg.StoragePath)
-		fmt.Println("http server:", cfg.HTTPServer)
-		fmt.Println("http server addr:", cfg.HTTPServer.Addr)
-
-		w.Write([]byte("Hello From Golang"))
-	})
+	router.HandleFunc("GET /api/students", student.New())
 	// setup server
 	server := http.Server {
 		Addr: cfg.Addr,
@@ -36,9 +28,12 @@ func main() {
 	}
 
 	done := make(chan os.Signal, 1)
+	// instead of buffered if we set an un-buffered channel then issue we might face is
+	// we sent many signal to the channel then also server is not gonna shutdown because it is theoritically infinite signal can absorb
 
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
+	// run the server listen inside a go routine
 	go func() {
 		slog.Info("server started", slog.String("address:",cfg.Addr))
 		err := server.ListenAndServe()
@@ -47,14 +42,21 @@ func main() {
 		}
 	}()
 
+		// as the go routine is non-blocking so we need to block the server from here
+		// for this we can use channel or mutex
 		<-done
 
 		// server stop logic
 
 		slog.Info("shutting down the server")
 
+		// we can use server.Shutdown but it might not be shutdown sometimes
+		// sometimes it is waiting for infinite time
+		// so for this we use context - nothing just handle those things
+
+		// create a timeline in that context
 		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-		defer cancel()
+		defer cancel() // this is basically garbage collector call of that context
 
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("Failed to Shutdown Server", slog.String("error", err.Error()))
@@ -62,3 +64,6 @@ func main() {
 
 		slog.Info("Server Shutdown successfully")
 }
+
+
+// go run md/students-api/main.go -config config/loal.yaml - to run the application

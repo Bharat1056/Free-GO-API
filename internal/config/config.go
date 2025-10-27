@@ -12,6 +12,8 @@ type HTTPServer struct {
 	Addr string `yaml:"addr"`
 }
 
+// const CONFIG_PATH = "config/local.yaml"
+
 type Config struct {
 	Env         string `yaml:"env" env:"ENV" env-default:"production"`
 	StoragePath string `yaml:"storage_path" env-required:"true"`
@@ -21,13 +23,17 @@ type Config struct {
 func Mustload() *Config{
 	var configPath string
 
+	// here CONFIG_PATH > path the env variable in the system
+	// in our case > config/local.yaml
 	configPath = os.Getenv("CONFIG_PATH")
 
 	if configPath == "" {
+		// via program argument/flags can we select that
+		// flag-name, default-value, description
 		flags := flag.String("config", "", "path to the configuration file")
 		flag.Parse()
 
-		configPath = *flags
+		configPath = *flags // remember here flags gives the pointer
 
 		if configPath == "" {
 			log.Fatal("Config path is not set")
