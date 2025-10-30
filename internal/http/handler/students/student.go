@@ -9,6 +9,7 @@ import (
 
 	"github.com/Bharat1056/students-api/internal/response"
 	"github.com/Bharat1056/students-api/internal/types"
+	"github.com/go-playground/validator/v10"
 )
 
 func New() http.HandlerFunc {
@@ -19,8 +20,20 @@ func New() http.HandlerFunc {
 
 		// if body is empty then
 		if errors.Is(err, io.EOF) {
-			response.WriteJson(w, http.StatusBadRequest, err.Error())
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			// response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body"))) // custom error message
 			return
+		}
+
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+
+		// request validation
+		if err := validator.New().Struct(student); err != nil {
+			validateErrs := err.(validator.ValidationErrors) // typecast the error to the validation error types
+			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
 		}
 
 		slog.Info("creating a student")
